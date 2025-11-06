@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <script src="xterm.min.js"></script>
+        <link href="xterm.min.css" rel="stylesheet">
+        <script src="xterm-addon-fit.min.js"></script>
+        <title>Web Serial XTerm</title>
+        
+        <style>
+            html, body {
+                width: 100%;
+                height: 100%;
+            }
+            
+            body {
+                margin: 0;
+                background: black;
+            }
+            
+            #connectBtn {
+                position: fixed;
+                width: 100vw;
+                height: 100vh;
+                z-index: 999;
+                font-size: 200%;
+                
+                border: none;
+                
+                background: black;
+                color: lime;
+                font-family: monospace;
+            }
+            
+            body {
+                
+                display: flex;
+                align-items: center;
+                justify-content: end;
+            }
+            
+            #terminal {
+                height: calc(100% - 2em);
+                width: calc(100% - 1em);
+            }
+        </style>
+    </head>
+    <body>
+        <button id="connectBtn">Click to Connect<br>to a<br>Serial Port</button>
+        <div id="terminal"></div>
+        <script>
+            async function SerialWrite(string) {
+                const encoder = new TextEncoder();
+                const writer = port.writable.getWriter();
+                await writer.write(encoder.encode(string));
+                writer.releaseLock();
+            }
+            
+            document.getElementById("connectBtn").addEventListener("click", async () => {
+                try {
+                    port = await navigator.serial.requestPort();
+                }
+                catch (e) {
+                    return;
+                }
+                document.getElementById("connectBtn").remove();
+                //console.log(port); // fixes bug???
+                await port.open({ baudRate: 115200 });
+                console.log(port); // fixes bug???
+                
+                term.write('Connected\n');
+                term.focus();
+                
+                while (port.readable) {
+                    const reader = port.readable.getReader();
+                    try {
+                        while (true) {
+                            const { value, done } = await reader.read();
+                            if (done) {
+                                // |reader| has been canceled.
+                                break;
+                            }
+                            // Do something with |value|…
+                            var string = new TextDecoder().decode(value);
+                            term.write(string);
+                        }
+                    } catch (error) {
+                        // Handle |error|…
+                    } finally {
+                        reader.releaseLock();
+                    }
+                }
+                console.log('Done reading');
+            });
+        </script>
+        <script>
+            var term = new Terminal({
+                cursorBlink: "block",
+                convertEol: true
+            });
+            
+            const fitAddon = new FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+            
+            term.open(document.getElementById("terminal"));
+            fitAddon.fit();
+            //term.write("Terminal\n");
+            
+            
+            /*term.onData(function(e) {
+                console.log({e:e});
+            });*/
+            
+            /*term.onKey(function(keyEvent) {
+                console.log(keyEvent);
+            });*/
+            
+            term.onKey(function(keyEvent) {
+                let key = keyEvent.key;
+                if (key == '\r')   key = '\n'; // Shuck only recognizes '\n'
+                if (key == '\x7f') key = '\b'; // for some reason xterm.js sends DEL when pressing BACKSPACE
+                SerialWrite(key);
+            });
+        </script>
+    </body>
+</html>
