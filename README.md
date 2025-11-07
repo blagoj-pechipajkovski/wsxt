@@ -14,4 +14,4 @@ A simple combination of Web Serial API and XTerm.js that lets you comunicate wit
 ## Limitations
 
 - Has a fixed baud rate of 115200
-- Only works on chrome/chromium based browsera because firefox does not support the web serial api
+- Only works on chrome/chromium based browsers because firefox does not support the web serial api
